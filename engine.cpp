@@ -28,6 +28,9 @@ float upX = 0, upY = 1, upZ = 0;
 float fov = 60.0f, near = 1.0f, far = 1000.0f;
 int drawMode = GL_LINE;
 
+float angle = 0.0f;
+float scaleY = 1.0f;
+
 int windowWidth = 512;
 int windowHeight = 512;
 
@@ -163,6 +166,9 @@ void renderScene(void) {
               lookX, lookY, lookZ,
               upX, upY, upZ);
 
+    glRotatef(angle, 0.0f, 1.0f, 0.0f);
+    glScalef(1.0f, scaleY, 1.0f);
+
     // axis drawing
     glBegin(GL_LINES);
         // X Vermelho
@@ -199,11 +205,48 @@ void renderScene(void) {
 
 void processKeys(unsigned char key, int x, int y) {
     switch (key) {
-        case 'f': drawMode = GL_FILL; break;   
-        case 'l': drawMode = GL_LINE; break;   
-        case 'p': drawMode = GL_POINT; break;  
+        case 'a':
+            angle -= 5.0f;
+            break;
+        case 'd':
+            angle += 5.0f;
+            break;
+        case 'w':
+            scaleY += 0.1f;
+            break;
+        case 's':
+            scaleY -= 0.1f;
+            if (scaleY < 1.0f) scaleY = 1.0f;
+            break;
+        case 'f': 
+            drawMode = GL_FILL; 
+            break;   
+        case 'l': 
+            drawMode = GL_LINE; 
+            break;   
+        case 'p': 
+            drawMode = GL_POINT; 
+            break;  
     }
 
+    glutPostRedisplay();
+}
+
+void processSpecialKeys(int key_code, int x, int y){
+    switch(key_code) {
+        case GLUT_KEY_UP:
+            camZ -= 0.5f;
+            break;
+        case GLUT_KEY_DOWN:
+            camZ += 0.5f;
+            break;
+        case GLUT_KEY_LEFT:
+            camX -= 0.5f;
+            break;
+        case GLUT_KEY_RIGHT:
+            camX += 0.5f;
+            break;
+    }
     glutPostRedisplay();
 }
 
@@ -230,6 +273,7 @@ int main(int argc, char **argv) {
     
     // Callback registration for keyboard processing
     glutKeyboardFunc(processKeys);
+    glutSpecialFunc(processSpecialKeys);
 
     // OpenGL settings
     glEnable(GL_DEPTH_TEST);
