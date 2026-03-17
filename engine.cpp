@@ -166,8 +166,6 @@ void renderScene(void) {
               lookX, lookY, lookZ,
               upX, upY, upZ);
 
-    glRotatef(angle, 0.0f, 1.0f, 0.0f);
-    glScalef(1.0f, scaleY, 1.0f);
 
     // axis drawing
     glBegin(GL_LINES);
@@ -185,7 +183,9 @@ void renderScene(void) {
         glVertex3f(0.0f, 0.0f, 100.0f);
     glEnd();
 
-    
+    glRotatef(angle, 0.0f, 1.0f, 0.0f);
+    glScalef(1.0f, scaleY, 1.0f);
+
     glColor3f(1.0f, 1.0f, 1.0f);
 
     glPolygonMode(GL_FRONT_AND_BACK, drawMode);
@@ -235,16 +235,16 @@ void processKeys(unsigned char key, int x, int y) {
 void processSpecialKeys(int key_code, int x, int y){
     switch(key_code) {
         case GLUT_KEY_UP:
-            camZ -= 0.5f;
-            break;
-        case GLUT_KEY_DOWN:
-            camZ += 0.5f;
-            break;
-        case GLUT_KEY_LEFT:
             camX -= 0.5f;
             break;
-        case GLUT_KEY_RIGHT:
+        case GLUT_KEY_DOWN:
             camX += 0.5f;
+            break;
+        case GLUT_KEY_LEFT:
+            camZ -= 0.5f;
+            break;
+        case GLUT_KEY_RIGHT:
+            camZ += 0.5f;
             break;
     }
     glutPostRedisplay();

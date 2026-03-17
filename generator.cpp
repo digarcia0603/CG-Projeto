@@ -77,7 +77,7 @@ void makeBox(float length, int divisions, string filename) {
                 a, end, next_b,         
                 a, end, b);
 
-            // Face Inferior (Y fixo em -end) - Ordem inversa para Backface Culling
+            // Face Inferior (Y fixo em -end)
             pushQuad(file,   a, -end, b, 
                            a, -end, next_b,   next_a, -end, next_b
                            , next_a, -end, b);
