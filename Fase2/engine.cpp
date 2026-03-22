@@ -21,6 +21,21 @@ struct Point {
     float z;
 };
 
+// Estrutura para as Transformações Geométricas
+struct Transform {
+    char type; // 't' para translate, 'r' para rotate, 's' para scale
+    float x, y, z, angle;
+};
+
+// Estrutura do Grupo
+struct Group {
+    vector<Transform> transforms;
+    vector<vector<Point>> models;
+    vector<Group> children; 
+};
+
+Group sceneRoot;
+
 
 float camX = 0, camY = 0, camZ = 0;
 float lookX = 0, lookY = 0, lookZ = 0;
@@ -34,20 +49,21 @@ float scaleY = 1.0f;
 int windowWidth = 512;
 int windowHeight = 512;
 
-// Estrutura de dados para guardar todos os modelos carregados
-// Um modelo é uma lista de triângulos (cada 3 pontos = 1 triângulo)
-vector<vector<Point>> models;
+int startX, startY, tracking = 0;
+float alpha_c = 0.0f, beta_c = 0.0f, radius_c = 50.0f;
 
 
-void loadModel(const char* filename) {
+
+vector<Point> loadModel(const char* filename) {
+    
+    vector<Point> currentModel;
     ifstream file(filename);
+    
     if (!file.is_open()) {
         printf("Erro: Nao foi possivel abrir o ficheiro do modelo %s\n", filename);
-        return;
+        return currentModel;
     }
 
-    vector<Point> currentModel;
-    
     int numVertices;
     
     if (file >> numVertices) {
@@ -56,14 +72,53 @@ void loadModel(const char* filename) {
     
     float x, y, z;
 
-    
     while (file >> x >> y >> z) {
         currentModel.push_back({x, y, z});
     }
 
     file.close();
-    models.push_back(currentModel);
-    printf("Modelo carregado: %s (%lu vertices)\n", filename, currentModel.size());
+    return currentModel;
+}
+
+Group parseGroup(XMLElement* groupElement) {
+    Group g;
+
+    // 1. Ler as Transformações (se existirem)
+    XMLElement* transformElement = groupElement->FirstChildElement("transform");
+    if (transformElement) {
+        for (XMLElement* t = transformElement->FirstChildElement(); t; t = t->NextSiblingElement()) {
+            Transform tr;
+            string name = t->Name();
+            tr.type = name[0]; // Apanha a 1ª letra: 't', 'r' ou 's'
+            
+            tr.x = t->FloatAttribute("x");
+            tr.y = t->FloatAttribute("y");
+            tr.z = t->FloatAttribute("z");
+            
+            if (tr.type == 'r') {
+                tr.angle = t->FloatAttribute("angle");
+            } else {
+                tr.angle = 0.0f;
+            }
+            g.transforms.push_back(tr);
+        }
+    }
+
+    // 2. Ler os Modelos .3d (se existirem)
+    XMLElement* modelsElement = groupElement->FirstChildElement("models");
+    if (modelsElement) {
+        for (XMLElement* m = modelsElement->FirstChildElement("model"); m; m = m->NextSiblingElement("model")) {
+            const char* file = m->Attribute("file");
+            g.models.push_back(loadModel(file));
+        }
+    }
+
+    // 3. Ler Sub-Grupos Recursivamente
+    for (XMLElement* childGroup = groupElement->FirstChildElement("group"); childGroup; childGroup = childGroup->NextSiblingElement("group")) {
+        g.children.push_back(parseGroup(childGroup));
+    }
+
+    return g;
 }
 
 
@@ -119,19 +174,13 @@ void loadConfig(const char* filename) {
     }
 
     // Carregar Modelos (estão dentro de <group><models><model>)
-    XMLElement* group = world->FirstChildElement("group");
-    if (group) {
-        XMLElement* modelsElem = group->FirstChildElement("models");
-        if (modelsElem) {
-            XMLElement* model = modelsElem->FirstChildElement("model");
-            // Iterar sobre todos os elementos <model>
-            while (model) {
-                const char* modelFile = model->Attribute("file");
-                if (modelFile) {
-                    loadModel(modelFile);
-                }
-                model = model->NextSiblingElement("model");
-            }
+    XMLElement* worldElement = doc.FirstChildElement("world");
+    if (worldElement) {
+        XMLElement* currentGroup = worldElement->FirstChildElement("group");
+        // Lê todos os grupos que estejam no nível principal da tag <world>
+        while (currentGroup) {
+            sceneRoot.children.push_back(parseGroup(currentGroup));
+            currentGroup = currentGroup->NextSiblingElement("group");
         }
     }
 }
@@ -154,6 +203,32 @@ void changeSize(int w, int h) {
     glMatrixMode(GL_MODELVIEW);
 }
 
+void drawGroup(const Group& g) {
+    glPushMatrix(); // Guarda o estado atual
+
+    // 1. Aplicar Transformações do Grupo
+    for (const auto& t : g.transforms) {
+        if (t.type == 't') glTranslatef(t.x, t.y, t.z);
+        else if (t.type == 'r') glRotatef(t.angle, t.x, t.y, t.z);
+        else if (t.type == 's') glScalef(t.x, t.y, t.z);
+    }
+
+    // 2. Desenhar os Modelos do Grupo
+    for (const auto& model : g.models) {
+        glBegin(GL_TRIANGLES);
+        for (const auto& p : model) {
+            glVertex3f(p.x, p.y, p.z);
+        }
+        glEnd();
+    }
+
+    // 3. Desenhar os Sub-Grupos Filhos
+    for (const auto& child : g.children) {
+        drawGroup(child);
+    }
+
+    glPopMatrix(); // Repõe o estado para não afetar os grupos "irmãos"
+}
 
 void renderScene(void) {
     
@@ -183,21 +258,11 @@ void renderScene(void) {
         glVertex3f(0.0f, 0.0f, 100.0f);
     glEnd();
 
-    glRotatef(angle, 0.0f, 1.0f, 0.0f);
-    glScalef(1.0f, scaleY, 1.0f);
-
     glColor3f(1.0f, 1.0f, 1.0f);
 
     glPolygonMode(GL_FRONT_AND_BACK, drawMode);
 
-    // Loop para desenhar todos os modelos carregados
-    for (const auto& model : models) {
-        glBegin(GL_TRIANGLES);
-        for (const auto& p : model) {
-            glVertex3f(p.x, p.y, p.z);
-        }
-        glEnd();
-    }
+    drawGroup(sceneRoot);
 
     // End of frame
     glutSwapBuffers();
@@ -251,6 +316,55 @@ void processSpecialKeys(int key_code, int x, int y){
 }
 
 
+void processMouseButtons(int button, int state, int xx, int yy) {
+    if (state == GLUT_DOWN) {
+        startX = xx;
+        startY = yy;
+        if (button == GLUT_LEFT_BUTTON)
+            tracking = 1; // Rodar
+        else if (button == GLUT_RIGHT_BUTTON)
+            tracking = 2; // Zoom
+        else
+            tracking = 0;
+    } 
+    else if (state == GLUT_UP) {
+        tracking = 0;
+    }
+}
+
+
+void processMouseMotion(int xx, int yy) {
+    if (!tracking)
+        return;
+
+    int deltaX = xx - startX;
+    int deltaY = yy - startY;
+
+    if (tracking == 1) { // Rodar
+        alpha_c -= deltaX * 0.5f;
+        beta_c += deltaY * 0.5f;
+
+        if (beta_c > 85.0f) beta_c = 85.0f;
+        else if (beta_c < -85.0f) beta_c = -85.0f;
+    } 
+    else if (tracking == 2) { // Zoom
+        radius_c += deltaY * 0.5f;
+        if (radius_c < 1.0f) radius_c = 1.0f;
+    }
+
+    // Reset aos pontos de partida para o próximo frame
+    startX = xx;
+    startY = yy;
+
+    // Converter coordenadas esféricas para cartesianas
+    camX = radius_c * sin(alpha_c * M_PI / 180.0) * cos(beta_c * M_PI / 180.0);
+    camZ = radius_c * cos(alpha_c * M_PI / 180.0) * cos(beta_c * M_PI / 180.0);
+    camY = radius_c * sin(beta_c * M_PI / 180.0);
+
+    glutPostRedisplay();
+}
+
+
 int main(int argc, char **argv) {
     if (argc < 2) {
         printf("Uso: ./engine config.xml\n");
@@ -265,7 +379,7 @@ int main(int argc, char **argv) {
     glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGBA);
     glutInitWindowPosition(100, 100);
     glutInitWindowSize(windowWidth, windowHeight);
-    glutCreateWindow("CG Project - Phase 1");
+    glutCreateWindow("CG Project - Phase 2");
 
     // Required callback registry 
     glutDisplayFunc(renderScene);
@@ -274,6 +388,8 @@ int main(int argc, char **argv) {
     // Callback registration for keyboard processing
     glutKeyboardFunc(processKeys);
     glutSpecialFunc(processSpecialKeys);
+    glutMouseFunc(processMouseButtons);
+	glutMotionFunc(processMouseMotion);
 
     // OpenGL settings
     glEnable(GL_DEPTH_TEST);

@@ -212,6 +212,59 @@ void makeCone(float radius, float height, int slices, int stacks, string filenam
     file.close();
 }
 
+void makeTorus(float tubeRadius, float mainRadius, int slices, int rings, string filename) {
+    ofstream file(filename);
+    
+    // Total de vértices: slices * rings * 2 triângulos * 3 vértices
+    int numVertices = slices * rings * 6;
+    file << numVertices << endl; // A nossa brilhante otimização para o engine!
+
+    float uStep = 2 * M_PI / slices;
+    float vStep = 2 * M_PI / rings;
+
+    for (int i = 0; i < slices; i++) {
+        float u1 = i * uStep;           // Ângulo atual à volta do eixo Y
+        float u2 = (i + 1) * uStep;     // Próximo ângulo à volta do eixo Y
+
+        for (int j = 0; j < rings; j++) {
+            float v1 = j * vStep;       // Ângulo atual do "tubo"
+            float v2 = (j + 1) * vStep; // Próximo ângulo do "tubo"
+
+            // Ponto 1 (u1, v1) - Inferior Esquerdo
+            float x1 = (mainRadius + tubeRadius * cos(v1)) * cos(u1);
+            float y1 = tubeRadius * sin(v1);
+            float z1 = (mainRadius + tubeRadius * cos(v1)) * sin(u1);
+
+            // Ponto 2 (u2, v1) - Inferior Direito
+            float x2 = (mainRadius + tubeRadius * cos(v1)) * cos(u2);
+            float y2 = tubeRadius * sin(v1);
+            float z2 = (mainRadius + tubeRadius * cos(v1)) * sin(u2);
+
+            // Ponto 3 (u2, v2) - Superior Direito
+            float x3 = (mainRadius + tubeRadius * cos(v2)) * cos(u2);
+            float y3 = tubeRadius * sin(v2);
+            float z3 = (mainRadius + tubeRadius * cos(v2)) * sin(u2);
+
+            // Ponto 4 (u1, v2) - Superior Esquerdo
+            float x4 = (mainRadius + tubeRadius * cos(v2)) * cos(u1);
+            float y4 = tubeRadius * sin(v2);
+            float z4 = (mainRadius + tubeRadius * cos(v2)) * sin(u1);
+
+            // Desenhar os 2 triângulos com Winding Order Counter-Clockwise (CCW)
+            // Triângulo 1 (P1 -> P2 -> P4)
+            file << x1 << " " << y1 << " " << z1 << endl;
+            file << x2 << " " << y2 << " " << z2 << endl;
+            file << x4 << " " << y4 << " " << z4 << endl;
+
+            // Triângulo 2 (P2 -> P3 -> P4)
+            file << x2 << " " << y2 << " " << z2 << endl;
+            file << x3 << " " << y3 << " " << z3 << endl;
+            file << x4 << " " << y4 << " " << z4 << endl;
+        }
+    }
+    file.close();
+}
+
 int main(int argc, char** argv) {
     if (argc < 2) {
         cout << "Uso: ./generator <modelo> [params...] <ficheiro_saida>" << endl;
@@ -244,6 +297,14 @@ int main(int argc, char** argv) {
         int slices = atoi(argv[4]);
         int stacks = atoi(argv[5]);
         makeCone(radius, height, slices, stacks, argv[6]);
+    }
+    else if (strcmp(argv[1], "torus") == 0 && argc == 7) {
+        // Ex: generator torus 0.5 2 30 30 torus.3d
+        float tubeRadius = atof(argv[2]); // Raio da "espessura" do anel
+        float mainRadius = atof(argv[3]); // Raio da distância ao centro
+        int slices = atoi(argv[4]);
+        int rings = atoi(argv[5]);
+        makeTorus(tubeRadius, mainRadius, slices, rings, argv[6]);
     }
     else {
         cout << "Comando invalido ou argumentos em falta." << endl;

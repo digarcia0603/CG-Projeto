@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.5)
 
-PROJECT(CG_Phase1)
+PROJECT(CG_Phase2)
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
