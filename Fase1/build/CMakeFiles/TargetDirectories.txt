@@ -1,0 +1,4 @@
+/home/diogo/CG/Projeto/build/CMakeFiles/generator.dir
+/home/diogo/CG/Projeto/build/CMakeFiles/engine.dir
+/home/diogo/CG/Projeto/build/CMakeFiles/edit_cache.dir
+/home/diogo/CG/Projeto/build/CMakeFiles/rebuild_cache.dir
