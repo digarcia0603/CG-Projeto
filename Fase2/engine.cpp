@@ -42,9 +42,7 @@ float lookX = 0, lookY = 0, lookZ = 0;
 float upX = 0, upY = 1, upZ = 0;
 float fov = 60.0f, near = 1.0f, far = 1000.0f;
 int drawMode = GL_LINE;
-
-float angle = 0.0f;
-float scaleY = 1.0f;
+bool showAxes = true;
 
 int windowWidth = 512;
 int windowHeight = 512;
@@ -183,6 +181,17 @@ void loadConfig(const char* filename) {
             currentGroup = currentGroup->NextSiblingElement("group");
         }
     }
+
+    float dx = camX - lookX;
+    float dy = camY - lookY;
+    float dz = camZ - lookZ;
+
+    radius_c = sqrt(dx * dx + dy * dy + dz * dz);
+
+    if (radius_c > 0.0f) {
+        beta_c = asin(dy / radius_c) * 180.0 / M_PI;
+        alpha_c = atan2(dx, dz) * 180.0 / M_PI;
+    }
 }
 
 
@@ -206,14 +215,14 @@ void changeSize(int w, int h) {
 void drawGroup(const Group& g) {
     glPushMatrix(); // Guarda o estado atual
 
-    // 1. Aplicar Transformações do Grupo
+    // Aplicar Transformações do Grupo
     for (const auto& t : g.transforms) {
         if (t.type == 't') glTranslatef(t.x, t.y, t.z);
         else if (t.type == 'r') glRotatef(t.angle, t.x, t.y, t.z);
         else if (t.type == 's') glScalef(t.x, t.y, t.z);
     }
 
-    // 2. Desenhar os Modelos do Grupo
+    // Desenhar os Modelos do Grupo
     for (const auto& model : g.models) {
         glBegin(GL_TRIANGLES);
         for (const auto& p : model) {
@@ -222,12 +231,12 @@ void drawGroup(const Group& g) {
         glEnd();
     }
 
-    // 3. Desenhar os Sub-Grupos Filhos
+    // Desenhar os Sub-Grupos Filhos
     for (const auto& child : g.children) {
         drawGroup(child);
     }
 
-    glPopMatrix(); // Repõe o estado para não afetar os grupos "irmãos"
+    glPopMatrix(); // Repõe o estado para não afetar os grupos irmãos
 }
 
 void renderScene(void) {
@@ -243,20 +252,22 @@ void renderScene(void) {
 
 
     // axis drawing
-    glBegin(GL_LINES);
-        // X Vermelho
-        glColor3f(1.0f, 0.0f, 0.0f); 
-        glVertex3f(-100.0f, 0.0f, 0.0f); 
-        glVertex3f(100.0f, 0.0f, 0.0f); 
-        // Y Verde
-        glColor3f(0.0f, 1.0f, 0.0f); 
-        glVertex3f(0.0f, -100.0f, 0.0f); 
-        glVertex3f(0.0f, 100.0f, 0.0f);
-        // Z Azul
-        glColor3f(0.0f, 0.0f, 1.0f); 
-        glVertex3f(0.0f, 0.0f, -100.0f); 
-        glVertex3f(0.0f, 0.0f, 100.0f);
-    glEnd();
+    if (showAxes) {
+        glBegin(GL_LINES);
+            // X Vermelho
+            glColor3f(1.0f, 0.0f, 0.0f); 
+            glVertex3f(-100.0f, 0.0f, 0.0f); 
+            glVertex3f(100.0f, 0.0f, 0.0f); 
+            // Y Verde
+            glColor3f(0.0f, 1.0f, 0.0f); 
+            glVertex3f(0.0f, -100.0f, 0.0f); 
+            glVertex3f(0.0f, 100.0f, 0.0f);
+            // Z Azul
+            glColor3f(0.0f, 0.0f, 1.0f); 
+            glVertex3f(0.0f, 0.0f, -100.0f); 
+            glVertex3f(0.0f, 0.0f, 100.0f);
+        glEnd();
+    }
 
     glColor3f(1.0f, 1.0f, 1.0f);
 
@@ -270,18 +281,11 @@ void renderScene(void) {
 
 void processKeys(unsigned char key, int x, int y) {
     switch (key) {
-        case 'a':
-            angle -= 5.0f;
-            break;
-        case 'd':
-            angle += 5.0f;
-            break;
         case 'w':
-            scaleY += 0.1f;
+            lookY += 0.5f;
             break;
         case 's':
-            scaleY -= 0.1f;
-            if (scaleY < 1.0f) scaleY = 1.0f;
+            lookY -= 0.5f;
             break;
         case 'f': 
             drawMode = GL_FILL; 
@@ -291,8 +295,15 @@ void processKeys(unsigned char key, int x, int y) {
             break;   
         case 'p': 
             drawMode = GL_POINT; 
+            break;
+        case 'x':
+            showAxes = !showAxes;
             break;  
     }
+
+    camX = lookX + radius_c * sin(alpha_c * M_PI / 180.0) * cos(beta_c * M_PI / 180.0);
+    camZ = lookZ + radius_c * cos(alpha_c * M_PI / 180.0) * cos(beta_c * M_PI / 180.0);
+    camY = lookY + radius_c * sin(beta_c * M_PI / 180.0);
 
     glutPostRedisplay();
 }
@@ -300,21 +311,26 @@ void processKeys(unsigned char key, int x, int y) {
 void processSpecialKeys(int key_code, int x, int y){
     switch(key_code) {
         case GLUT_KEY_UP:
-            camX -= 0.5f;
+            lookZ -= 0.5f; // Move o "alvo" para a frente
             break;
         case GLUT_KEY_DOWN:
-            camX += 0.5f;
+            lookZ += 0.5f; // Move o "alvo" para trás
             break;
         case GLUT_KEY_LEFT:
-            camZ -= 0.5f;
+            lookX -= 0.5f; // Move o "alvo" para a esquerda
             break;
         case GLUT_KEY_RIGHT:
-            camZ += 0.5f;
+            lookX += 0.5f; // Move o "alvo" para a direita
             break;
     }
+
+    // Atualiza a posição da câmara somando a posição do alvo ao cálculo da esfera
+    camX = lookX + radius_c * sin(alpha_c * M_PI / 180.0) * cos(beta_c * M_PI / 180.0);
+    camZ = lookZ + radius_c * cos(alpha_c * M_PI / 180.0) * cos(beta_c * M_PI / 180.0);
+    camY = lookY + radius_c * sin(beta_c * M_PI / 180.0);
+
     glutPostRedisplay();
 }
-
 
 void processMouseButtons(int button, int state, int xx, int yy) {
     if (state == GLUT_DOWN) {
@@ -357,9 +373,9 @@ void processMouseMotion(int xx, int yy) {
     startY = yy;
 
     // Converter coordenadas esféricas para cartesianas
-    camX = radius_c * sin(alpha_c * M_PI / 180.0) * cos(beta_c * M_PI / 180.0);
-    camZ = radius_c * cos(alpha_c * M_PI / 180.0) * cos(beta_c * M_PI / 180.0);
-    camY = radius_c * sin(beta_c * M_PI / 180.0);
+    camX = lookX + radius_c * sin(alpha_c * M_PI / 180.0) * cos(beta_c * M_PI / 180.0);
+    camZ = lookZ + radius_c * cos(alpha_c * M_PI / 180.0) * cos(beta_c * M_PI / 180.0);
+    camY = lookY + radius_c * sin(beta_c * M_PI / 180.0);
 
     glutPostRedisplay();
 }
