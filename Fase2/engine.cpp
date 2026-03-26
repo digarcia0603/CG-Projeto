@@ -104,7 +104,7 @@ Group parseGroup(XMLElement* groupElement) {
         }
     }
 
-    // 2. Ler os Modelos .3d (se existirem)
+    // 2. Ler os Modelos .3d se existirem
     XMLElement* modelsElement = groupElement->FirstChildElement("models");
     if (modelsElement) {
         for (XMLElement* m = modelsElement->FirstChildElement("model"); m; m = m->NextSiblingElement("model")) {

@@ -120,7 +120,7 @@
         
         <group>
             <transform>
-                <scale x="3" y="0.2" z="3" />
+                <scale x="3.5" y="0.2" z="3.5" />
             </transform>
             <models>
                 <model file="torus.3d" /> 

@@ -217,7 +217,7 @@ void makeTorus(float tubeRadius, float mainRadius, int slices, int rings, string
     
     // Total de vértices: slices * rings * 2 triângulos * 3 vértices
     int numVertices = slices * rings * 6;
-    file << numVertices << endl; // A nossa brilhante otimização para o engine!
+    file << numVertices << endl;
 
     float uStep = 2 * M_PI / slices;
     float vStep = 2 * M_PI / rings;
@@ -250,7 +250,7 @@ void makeTorus(float tubeRadius, float mainRadius, int slices, int rings, string
             float y4 = tubeRadius * sin(v2);
             float z4 = (mainRadius + tubeRadius * cos(v2)) * sin(u1);
 
-            // Desenhar os 2 triângulos com Winding Order Counter-Clockwise (CCW)
+            
             // Triângulo 1 (P1 -> P2 -> P4)
             file << x1 << " " << y1 << " " << z1 << endl;
             file << x2 << " " << y2 << " " << z2 << endl;
