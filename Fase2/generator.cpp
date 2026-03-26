@@ -227,8 +227,8 @@ void makeTorus(float tubeRadius, float mainRadius, int slices, int rings, string
         float u2 = (i + 1) * uStep;     // Próximo ângulo à volta do eixo Y
 
         for (int j = 0; j < rings; j++) {
-            float v1 = j * vStep;       // Ângulo atual do "tubo"
-            float v2 = (j + 1) * vStep; // Próximo ângulo do "tubo"
+            float v1 = j * vStep;       // Ângulo atual do tubo
+            float v2 = (j + 1) * vStep; // Próximo ângulo do tubo
 
             // Ponto 1 (u1, v1) - Inferior Esquerdo
             float x1 = (mainRadius + tubeRadius * cos(v1)) * cos(u1);
